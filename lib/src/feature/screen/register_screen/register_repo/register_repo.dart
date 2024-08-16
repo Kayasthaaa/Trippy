@@ -1,4 +1,5 @@
-import 'package:trippy/src/feature/screen/login_screen/models/error_models.dart';
+import 'package:dio/dio.dart';
+import 'package:trippy/src/feature/screen/register_screen/models/error.dart';
 import 'package:trippy/src/feature/screen/register_screen/models/register_models.dart';
 import 'package:trippy/src/feature/screen/register_screen/register_api/register_api.dart';
 
@@ -7,7 +8,7 @@ class RegisterRepository {
 
   RegisterRepository(this._apiService);
 
-  Future<RegisterResponse> registerUser(
+  Future<dynamic> registerUser(
     String fname,
     String password,
     String uname,
@@ -28,14 +29,28 @@ class RegisterRepository {
         'address': address,
         'bio': bio
       });
+
       if (response.statusCode == 201) {
         return RegisterResponse.fromJson(response.data);
       } else {
-        throw ErrorModel.fromJson(response.data).message;
+        throw ErrorResponse.fromJson(response.data);
       }
     } catch (e) {
-      // Ensure the error message is passed up cleanly
-      throw e.toString().replaceAll('Exception:', '').trim();
+      if (e is DioException && e.response != null) {
+        final errorData = e.response!.data;
+        if (errorData is Map<String, dynamic>) {
+          throw ErrorResponse.fromJson(errorData);
+        } else {
+          throw ErrorResponse(
+            message: 'Unexpected error format',
+            errors: {},
+          );
+        }
+      }
+      throw ErrorResponse(
+        message: e.toString(),
+        errors: {},
+      );
     }
   }
 }

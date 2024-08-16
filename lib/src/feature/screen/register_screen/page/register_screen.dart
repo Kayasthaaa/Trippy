@@ -35,6 +35,8 @@ class _RegisterScreenPageState extends State<RegisterScreenPage> {
   final TextEditingController address = TextEditingController();
   final TextEditingController bio = TextEditingController();
   bool hidePassword = true;
+  Map<String, List<String>> validationErrors = {};
+
   @override
   void dispose() {
     email.dispose();
@@ -135,6 +137,7 @@ class _RegisterScreenPageState extends State<RegisterScreenPage> {
                       ),
                       SizedBox(height: constraints.maxHeight * 0.02),
                       NewField(
+                        validator: validatePassword,
                         mealController: password,
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         onSuffixPressed: () {
@@ -181,11 +184,10 @@ class _RegisterScreenPageState extends State<RegisterScreenPage> {
                       BlocConsumer<RegisterCubit, RegisterState>(
                         listener: (context, state) {
                           if (state is RegisterError) {
-                            ToasterService.error(message: state.error);
+                            ToasterService.error(
+                                message: 'Error, try using unique credentials');
                           } else if (state is RegisterSuccess) {
-                            if (context.mounted) {
-                              Get.off(() => const LoginScreenPage());
-                            }
+                            Get.off(() => const LoginScreenPage());
                             email.clear();
                             password.clear();
                             fname.clear();
@@ -200,6 +202,8 @@ class _RegisterScreenPageState extends State<RegisterScreenPage> {
                         builder: (context, state) {
                           return AppBtn(
                             onTap: () async {
+                              FocusScope.of(context)
+                                  .unfocus(); // Hide the keyboard
                               final isValid = form.currentState?.validate();
                               if (isValid == false) {
                                 ToasterService.error(
@@ -215,18 +219,15 @@ class _RegisterScreenPageState extends State<RegisterScreenPage> {
                                 return;
                               }
                               if (state is! RegisterLoading) {
-                                FocusScope.of(context).unfocus();
-                                if (context.mounted) {
-                                  context.read<RegisterCubit>().registerUser(
-                                      fname.text,
-                                      password.text,
-                                      uname.text,
-                                      password.text,
-                                      address.text,
-                                      num.text,
-                                      email.text,
-                                      bio.text);
-                                }
+                                context.read<RegisterCubit>().registerUser(
+                                    fname.text,
+                                    password.text,
+                                    uname.text,
+                                    password.text,
+                                    address.text,
+                                    num.text,
+                                    email.text,
+                                    bio.text);
                               }
                             },
                             child: state is RegisterLoading

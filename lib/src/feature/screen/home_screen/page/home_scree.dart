@@ -136,7 +136,7 @@ class _HomeState extends State<Home> {
                         ),
                         Containers(
                           onTap: () {
-                            Get.to(() => TripPlannerPage());
+                            Get.to(() => const TripPlannerPage());
                           },
                           width: 110,
                           height: 30,

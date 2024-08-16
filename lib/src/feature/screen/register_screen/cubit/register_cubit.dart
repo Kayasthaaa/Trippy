@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:trippy/src/feature/screen/register_screen/cubit/register_state.dart';
+import 'package:trippy/src/feature/screen/register_screen/models/error.dart';
 import 'package:trippy/src/feature/screen/register_screen/register_repo/register_repo.dart';
 
 class RegisterCubit extends Cubit<RegisterState> {
@@ -17,14 +18,22 @@ class RegisterCubit extends Cubit<RegisterState> {
     String email,
     String bio,
   ) async {
-    emit(RegisterLoading()); // Emit loading state
+    emit(RegisterLoading());
     try {
       final user = await _userRepository.registerUser(
           fname, password, uname, cpassword, address, num, email, bio);
-
-      emit(RegisterSuccess(user)); // Emit success state
+      emit(RegisterSuccess(user));
     } catch (e) {
-      emit(RegisterError(e.toString())); // Emit error state
+      if (e is ErrorResponse) {
+        emit(RegisterError(e));
+      } else {
+        emit(RegisterError(
+          ErrorResponse(
+            message: 'An unexpected error occurred',
+            errors: {},
+          ),
+        ));
+      }
     }
   }
 }
