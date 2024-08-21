@@ -18,6 +18,7 @@ class ApiService {
       onRequest: (options, handler) async {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('user_token');
+        // final user_id = prefs.getInt(key)
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }

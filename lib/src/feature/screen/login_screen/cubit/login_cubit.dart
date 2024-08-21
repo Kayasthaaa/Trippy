@@ -12,7 +12,8 @@ class UserCubit extends Cubit<UserState> {
     emit(UserLoading()); // Emit loading state
     try {
       final user = await _userRepository.loginUser(name, password);
-      await _saveUserToken(user.accessToken);
+      await _saveUserCredentials(user.accessToken, user.userId);
+
       emit(UserSuccess(user)); // Emit success state
     } catch (e) {
       emit(UserError(e.toString())); // Emit error state
@@ -20,18 +21,19 @@ class UserCubit extends Cubit<UserState> {
   }
 
   Future<void> logout() async {
-    await _clearUserToken();
+    await _clearUserCredentials();
     emit(UserInitial()); // Emit initial state on logout
   }
 
-  Future<void> _saveUserToken(String token) async {
+  Future<void> _saveUserCredentials(String token, int userId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_token', token);
+    await prefs.setInt('user_id', userId);
   }
 
-  Future<void> _clearUserToken() async {
+  Future<void> _clearUserCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user_token');
-    await prefs.clear();
+    await prefs.remove('user_id');
   }
 }

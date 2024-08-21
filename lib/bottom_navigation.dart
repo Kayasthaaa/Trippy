@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:trippy/logout_btn.dart';
 import 'package:trippy/src/constant/colors.dart';
+import 'package:trippy/src/feature/screen/get_profile/page/get_profile_page.dart';
 import 'package:trippy/src/feature/screen/home_screen/page/home_scree.dart';
-import 'package:trippy/src/feature/screen/login_screen/page/login_form.dart';
 
 class BottomNavigationScreen extends StatefulWidget {
   const BottomNavigationScreen({super.key});
@@ -18,8 +18,8 @@ class _BottomNavigationScreenState extends State<BottomNavigationScreen> {
 
   final List<Widget> _pages = [
     const Home(),
-    const LoginScreenPage(),
     const LogoutBtn(),
+    const ProfilePage(),
   ];
 
   void onTabTapped(int index) {

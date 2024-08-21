@@ -6,6 +6,9 @@ import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:get/route_manager.dart';
 import 'package:trippy/src/constant/navigation_service.dart';
 import 'package:trippy/src/controller/network_controller.dart';
+import 'package:trippy/src/feature/screen/get_profile/api/get_profile_api.dart';
+import 'package:trippy/src/feature/screen/get_profile/cubit/get_profile_cubit.dart';
+import 'package:trippy/src/feature/screen/get_profile/repo/get_profile_repo.dart';
 import 'package:trippy/src/feature/screen/home_screen/api/home_screen_api.dart';
 import 'package:trippy/src/feature/screen/home_screen/cubit/home_screen_cubit.dart';
 import 'package:trippy/src/feature/screen/home_screen/repo/home_screen_repo.dart';
@@ -63,6 +66,13 @@ class AppBase extends StatelessWidget {
           create: (context) => HomeCubit(
             HomeRepository(
               HomeApiService(),
+            ),
+          ),
+        ),
+        BlocProvider(
+          create: (context) => GetProfileCubit(
+            GetProfileRepository(
+              GetProfileApiService(),
             ),
           ),
         ),
