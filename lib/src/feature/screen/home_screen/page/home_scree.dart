@@ -309,13 +309,14 @@ class _HomeState extends State<Home> {
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: state.userList!.data.length,
+                    itemCount: state.userList!.data.trips.length,
                     itemBuilder: (context, index) {
-                      final user = state.userList!.data[index];
+                      final user = state.userList!.data.trips[index];
                       return Card_3D(
-                        imageUrl: user.avatar,
-                        title: user.firstName,
-                        subtitle: user.lastName,
+                        imageUrl: user.tripName,
+                        title: user.tripName,
+                        desc: user.arrivalPlace,
+                        price: user.tripPrice,
                       );
                     },
                   ),

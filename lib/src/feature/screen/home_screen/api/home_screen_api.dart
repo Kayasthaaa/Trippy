@@ -1,15 +1,16 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trippy/src/constant/app_url.dart';
 
 class HomeApiService {
   late Dio _dio;
 
   HomeApiService() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'https://reqres.in/',
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 3),
+      baseUrl: ApiUrl.baseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 13),
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
