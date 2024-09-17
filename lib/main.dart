@@ -18,8 +18,12 @@ import 'package:trippy/src/feature/screen/login_screen/login_repo/login_repo.dar
 import 'package:trippy/src/feature/screen/register_screen/cubit/register_cubit.dart';
 import 'package:trippy/src/feature/screen/register_screen/register_api/register_api.dart';
 import 'package:trippy/src/feature/screen/register_screen/register_repo/register_repo.dart';
+import 'package:trippy/src/feature/screen/trip_details/api/trip_details_api.dart';
+import 'package:trippy/src/feature/screen/trip_details/cubit/trip_details_cubit.dart';
 import 'package:trippy/src/feature/widgets/app_loading.dart';
 import 'package:trippy/src/routes/routes.dart';
+
+import 'src/feature/screen/trip_details/repo/trip_details_repo.dart';
 
 void main() {
   runApp(const MyApp());
@@ -73,6 +77,13 @@ class AppBase extends StatelessWidget {
           create: (context) => GetProfileCubit(
             GetProfileRepository(
               GetProfileApiService(),
+            ),
+          ),
+        ),
+        BlocProvider(
+          create: (context) => GetTripDetailsCubit(
+            GetTripDetailsRepository(
+              TripDetailsApi(),
             ),
           ),
         ),

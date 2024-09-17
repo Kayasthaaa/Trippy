@@ -1,15 +1,25 @@
-// ignore_for_file: library_private_types_in_public_api, unused_field
+// ignore_for_file: library_private_types_in_public_api, unused_field, unnecessary_to_list_in_spreads
 
 import 'dart:async';
+
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:get/route_manager.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:trippy/bottom_navigation.dart';
 import 'package:trippy/src/constant/app_spaces.dart';
 import 'package:trippy/src/constant/colors.dart';
+import 'package:trippy/src/constant/loader.dart';
 import 'package:trippy/src/constant/toaster.dart';
+import 'package:trippy/src/feature/screen/create_trips/api/create_trips_api.dart';
+import 'package:trippy/src/feature/screen/create_trips/cubit/create_trip_cubit.dart';
+import 'package:trippy/src/feature/screen/create_trips/cubit/create_trips_state.dart';
+import 'package:trippy/src/feature/screen/create_trips/models/create_trips_models.dart';
+
 import 'package:trippy/src/feature/widgets/app_btn.dart';
 import 'package:trippy/src/feature/widgets/app_loading.dart';
 import 'package:trippy/src/feature/widgets/app_texts.dart';
@@ -29,11 +39,13 @@ class TripPlannerPage extends StatefulWidget {
 class _TripPlannerPageState extends State<TripPlannerPage> {
   late MapController _mapController;
   final List<Marker> _markers = [];
+  final TextEditingController _tripNameController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _waypointController = TextEditingController();
   String _searchAddress = '';
   LatLng? _initialLocation;
   LatLng? _destinationLocation;
+
   final List<Map<String, dynamic>> _waypoints = [];
   DateTime _focusedDay = DateTime.now();
   String? _selectedTransport;
@@ -60,12 +72,64 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
 
   bool _isLoading = true;
   bool _isMapReady = false;
-
+  String _startLocName = '';
+  String _endLocName = '';
+  late PostTripApiService _apiService;
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
     _checkLocationPermissionAndGetLocation();
+    _apiService = PostTripApiService();
+  }
+
+  Trip _createTripFromState() {
+    return Trip(
+      name: _tripNameController.text.isNotEmpty
+          ? _tripNameController.text
+          : "Trip to Nepal",
+      description: _commentsController.text,
+      price: double.tryParse(_budgetController.text) ?? 0,
+      startDate: _startDate ?? DateTime.now(),
+      endDate: _endDate ?? DateTime.now(),
+      arrivalTime: '8:00 PM', // You might want to add a field for this
+      meansOfTransport: _selectedTransport ?? '',
+      isPrivate: false, // Add a toggle for this if needed
+      startLoc: _initialLocation != null
+          ? "${_initialLocation!.latitude}, ${_initialLocation!.longitude}"
+          : '',
+      startLocName: _startLocName,
+      endLoc: _destinationLocation != null
+          ? "${_destinationLocation!.latitude}, ${_destinationLocation!.longitude}"
+          : '',
+      endLocName: _endLocName,
+      locations: [
+        if (_initialLocation != null)
+          "${_initialLocation!.latitude}, ${_initialLocation!.longitude}",
+        ..._waypoints
+            .map((wp) =>
+                "${wp['location'].latitude}, ${wp['location'].longitude}")
+            .toList(),
+        if (_destinationLocation != null)
+          "${_destinationLocation!.latitude}, ${_destinationLocation!.longitude}",
+      ],
+    );
+  }
+
+  bool _validateForm() {
+    if (_tripNameController.text.isEmpty ||
+        _initialLocation == null ||
+        _destinationLocation == null ||
+        _startDate == null ||
+        _endDate == null ||
+        _selectedTransport == null ||
+        _numberOfPeopleController.text.isEmpty ||
+        _totalDaysController.text.isEmpty ||
+        _budgetController.text.isEmpty) {
+      ToasterService.error(message: 'Please fill in all required fields');
+      return false;
+    }
+    return true;
   }
 
   Future<void> _checkLocationPermissionAndGetLocation() async {
@@ -121,6 +185,17 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
         _isLoading = false;
       });
 
+      // Get the name of the current location
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        setState(() {
+          _startLocName =
+              "${place.locality ?? ''}, ${place.administrativeArea ?? ''}, ${place.country ?? ''}";
+        });
+      }
+
       if (_isMapReady) {
         _mapController.move(_initialLocation!, 15.0);
       }
@@ -151,10 +226,22 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
           setState(() {
             _destinationLocation = newLocation;
             _searchAddress = searchQuery;
+            _endLocName = searchQuery; // Store the end location name
             _updateMarkers();
           });
 
           _fitMapToMarkers();
+
+          // Get more detailed information about the end location
+          List<Placemark> placemarks = await placemarkFromCoordinates(
+              firstLocation.latitude, firstLocation.longitude);
+          if (placemarks.isNotEmpty) {
+            Placemark place = placemarks[0];
+            setState(() {
+              _endLocName =
+                  "${place.locality ?? ''}, ${place.administrativeArea ?? ''}, ${place.country ?? ''}";
+            });
+          }
         } else {
           ToasterService.error(message: 'Location is outside of Nepal');
         }
@@ -293,31 +380,6 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
     );
   }
 
-  // void _fitMapToMarkers() {
-  //   if (_markers.isNotEmpty && _isMapReady) {
-  //     double minLat = _markers.first.point.latitude;
-  //     double maxLat = _markers.first.point.latitude;
-  //     double minLong = _markers.first.point.longitude;
-  //     double maxLong = _markers.first.point.longitude;
-
-  //     for (var marker in _markers) {
-  //       minLat = math.min(minLat, marker.point.latitude);
-  //       maxLat = math.max(maxLat, marker.point.latitude);
-  //       minLong = math.min(minLong, marker.point.longitude);
-  //       maxLong = math.max(maxLong, marker.point.longitude);
-  //     }
-
-  //     double centerLat = (minLat + maxLat) / 2;
-  //     double centerLong = (minLong + maxLong) / 2;
-  //     double latDelta = (maxLat - minLat).abs();
-  //     double longDelta = (maxLong - minLong).abs();
-
-  //     double zoom = 11.0 - math.log(math.max(latDelta, longDelta)) / math.ln2;
-
-  //     _mapController.move(LatLng(centerLat, centerLong), zoom);
-  //   }
-  // }
-
   void _addWaypoint(String waypointName) async {
     if (_destinationLocation == null) {
       ToasterService.error(message: 'Please set a final destination first.');
@@ -349,44 +411,24 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColor.appColor,
-      appBar: const kBar(),
-      body: _isLoading
-          ? Center(child: AppLoading())
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10.0),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 5.0,
-                                spreadRadius: 1.0,
-                                offset: Offset(0.0, 2.0),
-                              ),
-                            ],
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(left: 14, right: 6),
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 10.0),
+    return BlocProvider(
+      create: (context) => TripPlannerCubit(PostTripApiService()),
+      child: Scaffold(
+        backgroundColor: AppColor.appColor,
+        appBar: const kBar(),
+        body: _isLoading
+            ? Center(child: AppLoading())
+            : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 50,
+                            height: 48,
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(10.0),
@@ -399,225 +441,276 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
                                 ),
                               ],
                             ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _searchController,
-                                    decoration: const InputDecoration(
-                                      hintText: 'Search for a location',
-                                      border: InputBorder.none,
+                            child: IconButton(
+                              icon: const Icon(Icons.arrow_back),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ),
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.only(left: 14, right: 6),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10.0),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10.0),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 5.0,
+                                    spreadRadius: 1.0,
+                                    offset: Offset(0.0, 2.0),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _searchController,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Search for a location',
+                                        border: InputBorder.none,
+                                      ),
+                                      onSubmitted: (value) {
+                                        if (value.isNotEmpty) {
+                                          _searchLocation(value);
+                                        }
+                                      },
                                     ),
-                                    onSubmitted: (value) {
-                                      if (value.isNotEmpty) {
-                                        _searchLocation(value);
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.search,
+                                        color: Colors.blue),
+                                    onPressed: () {
+                                      String searchQuery =
+                                          _searchController.text.trim();
+                                      if (searchQuery.isNotEmpty) {
+                                        _searchLocation(searchQuery);
                                       }
                                     },
                                   ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.search,
-                                      color: Colors.blue),
-                                  onPressed: () {
-                                    String searchQuery =
-                                        _searchController.text.trim();
-                                    if (searchQuery.isNotEmpty) {
-                                      _searchLocation(searchQuery);
-                                    }
-                                  },
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    height: 450,
-                    child: FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: _nepalCenter,
-                        initialZoom: 7.0, // Adjusted for better Nepal view
-                        minZoom: 6.0,
-                        maxZoom: 18.0,
-                        onMapReady: () {
-                          setState(() {
-                            _isMapReady = true;
-                          });
-                          _fitMapToMarkers();
-                        },
+                        ],
                       ),
-                      children: [
-                        _currentTileLayer,
-                        MarkerLayer(markers: _markers),
-                        PolylineLayer(
-                          polylines: [
-                            Polyline(
-                              points: [
-                                if (_initialLocation != null) _initialLocation!,
-                                ..._waypoints.map((wp) => wp['location']),
-                                if (_destinationLocation != null)
-                                  _destinationLocation!,
-                              ],
-                              color: Colors.blue,
-                              strokeWidth: 4.0,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      height: 450,
+                      child: FlutterMap(
+                        mapController: _mapController,
+                        options: MapOptions(
+                          initialCenter: _nepalCenter,
+                          initialZoom: 7.0, // Adjusted for better Nepal view
+                          minZoom: 6.0,
+                          maxZoom: 18.0,
+                          onMapReady: () {
+                            setState(() {
+                              _isMapReady = true;
+                            });
+                            _fitMapToMarkers();
+                          },
+                        ),
+                        children: [
+                          _currentTileLayer,
+                          MarkerLayer(markers: _markers),
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(
+                                points: [
+                                  if (_initialLocation != null)
+                                    _initialLocation!,
+                                  ..._waypoints.map((wp) => wp['location']),
+                                  if (_destinationLocation != null)
+                                    _destinationLocation!,
+                                ],
+                                color: Colors.blue,
+                                strokeWidth: 4.0,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10.0),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 5.0,
+                              spreadRadius: 1.0,
+                              offset: Offset(0.0, 2.0),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10.0),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 5.0,
-                            spreadRadius: 1.0,
-                            offset: Offset(0.0, 2.0),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _waypointController,
-                              decoration: const InputDecoration(
-                                hintText: 'Add Stops',
-                                border: InputBorder.none,
-                                contentPadding:
-                                    EdgeInsets.symmetric(horizontal: 16),
-                              ),
-                              onSubmitted: (value) {
-                                if (value.isNotEmpty) {
-                                  _addWaypoint(value);
-                                  _waypointController.clear();
-                                }
-                              },
-                            ),
-                          ),
-                          Container(
-                            decoration: const BoxDecoration(
-                              color: Color.fromARGB(255, 104, 79, 163),
-                              borderRadius: BorderRadius.only(
-                                topRight: Radius.circular(10.0),
-                                bottomRight: Radius.circular(10.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _waypointController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Add Stops',
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      EdgeInsets.symmetric(horizontal: 16),
+                                ),
+                                onSubmitted: (value) {
+                                  if (value.isNotEmpty) {
+                                    _addWaypoint(value);
+                                    _waypointController.clear();
+                                  }
+                                },
                               ),
                             ),
-                            child: IconButton(
-                              icon: const Icon(Icons.add, color: Colors.white),
-                              onPressed: () {
-                                String waypointName =
-                                    _waypointController.text.trim();
-                                if (waypointName.isNotEmpty) {
-                                  _addWaypoint(waypointName);
-                                  _waypointController.clear();
-                                }
-                              },
+                            Container(
+                              decoration: const BoxDecoration(
+                                color: Color.fromARGB(255, 104, 79, 163),
+                                borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(10.0),
+                                  bottomRight: Radius.circular(10.0),
+                                ),
+                              ),
+                              child: IconButton(
+                                icon:
+                                    const Icon(Icons.add, color: Colors.white),
+                                onPressed: () {
+                                  String waypointName =
+                                      _waypointController.text.trim();
+                                  if (waypointName.isNotEmpty) {
+                                    _addWaypoint(waypointName);
+                                    _waypointController.clear();
+                                  }
+                                },
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Wrap(
-                      spacing: 8.0,
-                      runSpacing: 8.0,
-                      children: _waypoints.asMap().entries.map((entry) {
-                        int idx = entry.key;
-                        Map<String, dynamic> waypoint = entry.value;
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Wrap(
+                        spacing: 8.0,
+                        runSpacing: 8.0,
+                        children: _waypoints.asMap().entries.map((entry) {
+                          int idx = entry.key;
+                          Map<String, dynamic> waypoint = entry.value;
 
-                        List<Color> chipColors = [
-                          const Color.fromARGB(255, 114, 168, 216), // Blue
-                          const Color.fromARGB(255, 189, 89, 126), // Pink
-                          const Color.fromARGB(255, 99, 156, 102), // Green
-                          const Color.fromARGB(255, 216, 141, 83), // Orange
-                          const Color.fromARGB(255, 132, 82, 133), // Purple
-                          const Color.fromARGB(
-                              255, 124, 90, 190), // Deep Purple
-                          const Color.fromARGB(255, 109, 184, 194), // Cyan
-                          const Color.fromARGB(255, 214, 176, 86), // Amber
-                        ];
+                          List<Color> chipColors = [
+                            const Color.fromARGB(255, 114, 168, 216), // Blue
+                            const Color.fromARGB(255, 189, 89, 126), // Pink
+                            const Color.fromARGB(255, 99, 156, 102), // Green
+                            const Color.fromARGB(255, 216, 141, 83), // Orange
+                            const Color.fromARGB(255, 132, 82, 133), // Purple
+                            const Color.fromARGB(
+                                255, 124, 90, 190), // Deep Purple
+                            const Color.fromARGB(255, 109, 184, 194), // Cyan
+                            const Color.fromARGB(255, 214, 176, 86), // Amber
+                          ];
 
-                        Color chipColor = chipColors[idx % chipColors.length];
+                          Color chipColor = chipColors[idx % chipColors.length];
 
-                        return Chip(
-                          label: Texts(
-                            texts: 'Stop ${idx + 1}: ${waypoint['name']}',
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 5,
-                          ),
-                          backgroundColor: chipColor,
-                          deleteIcon: const Icon(Icons.close, size: 18),
-                          deleteIconColor: Colors.white.withOpacity(0.7),
-                          onDeleted: () {
-                            setState(() {
-                              _waypoints.removeAt(idx);
-                              _updateMarkers();
-                              _fitMapToMarkers();
-                            });
-                          },
-                          avatar: CircleAvatar(
-                            backgroundColor: Colors.white.withOpacity(0.3),
-                            child: Texts(
-                              texts: '${idx + 1}',
+                          return Chip(
+                            label: Texts(
+                              texts: 'Stop ${idx + 1}: ${waypoint['name']}',
+                              color: Colors.white,
                               fontWeight: FontWeight.w500,
                               fontSize: 5,
-                              color: Colors.white,
                             ),
-                          ),
-                          elevation: 3,
-                          shadowColor: chipColor.withOpacity(0.4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                        );
-                      }).toList(),
+                            backgroundColor: chipColor,
+                            deleteIcon: const Icon(Icons.close, size: 18),
+                            deleteIconColor: Colors.white.withOpacity(0.7),
+                            onDeleted: () {
+                              setState(() {
+                                _waypoints.removeAt(idx);
+                                _updateMarkers();
+                                _fitMapToMarkers();
+                              });
+                            },
+                            avatar: CircleAvatar(
+                              backgroundColor: Colors.white.withOpacity(0.3),
+                              child: Texts(
+                                texts: '${idx + 1}',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 5,
+                                color: Colors.white,
+                              ),
+                            ),
+                            elevation: 3,
+                            shadowColor: chipColor.withOpacity(0.4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                          );
+                        }).toList(),
+                      ),
                     ),
-                  ),
-                  _buildElegantCalendar(),
-                  const SizedBox(height: 16),
-                  Containers(
-                    margin: const EdgeInsets.symmetric(horizontal: 22.0),
-                    width: maxWidth(context),
-                    child: const Texts(
-                      texts: 'Select means of transportation',
-                      fontSize: 14,
-                      color: Colors.black,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(height: 16),
+                    _buildElegantCalendar(),
+                    const SizedBox(height: 16),
+                    Containers(
+                      margin: const EdgeInsets.symmetric(horizontal: 22.0),
+                      width: maxWidth(context),
+                      child: const Texts(
+                        texts: 'Select means of transportation',
+                        fontSize: 14,
+                        color: Colors.black,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  _buildTransportationIcons(),
-                  const SizedBox(height: 16),
-                  _buildTripDetailsRow(),
-                  const SizedBox(height: 16),
-                  _buildBudgetTextField(),
-                  const SizedBox(height: 16),
-                  _buildCommentsTextField(),
-                  const SizedBox(height: 26),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 18),
-                    child: AppBtn(
-                      child: btnText("Let's go"),
+                    _buildTransportationIcons(),
+                    const SizedBox(height: 16),
+                    _buildTripDetailsRow(),
+                    const SizedBox(height: 16),
+                    _buildBudgetTextField(),
+                    const SizedBox(height: 16),
+                    _buildCommentsTextField(),
+                    const SizedBox(height: 26),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 18),
+                      child: BlocConsumer<TripPlannerCubit, TripPlannerState>(
+                        listener: (context, state) {
+                          if (state is TripPlannerSuccess) {
+                            _clearForm();
+
+                            if (context.mounted) {
+                              Get.offAll(() => const BottomNavigationScreen());
+                            }
+                            ToasterService.success(
+                                message: 'Trip planned successfully!');
+                          } else if (state is TripPlannerFailure) {
+                            ToasterService.error(message: state.error);
+                          }
+                        },
+                        builder: (context, state) {
+                          return AppBtn(
+                            child: state is TripPlannerLoading
+                                ? loading()
+                                : btnText("Let's go"),
+                            onTap: () {
+                              if (state is! TripPlannerLoading) {
+                                Trip trip = _createTripFromState();
+                                context.read<TripPlannerCubit>().planTrip(trip);
+                              }
+                            },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 26),
-                ],
+                    const SizedBox(height: 26),
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 
@@ -648,7 +741,7 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
         child: TextField(
           controller: _commentsController,
           decoration: const InputDecoration(
-            hintText: 'Additional Comments',
+            hintText: 'Ittenaries',
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             prefixIcon: Icon(Icons.comment, color: Colors.blue),
@@ -799,6 +892,25 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
         ],
       ),
     );
+  }
+
+  void _clearForm() {
+    setState(() {
+      _tripNameController.clear();
+      _searchController.clear();
+      _waypointController.clear();
+      _numberOfPeopleController.clear();
+      _totalDaysController.clear();
+      _budgetController.clear();
+      _commentsController.clear();
+      _initialLocation = null;
+      _destinationLocation = null;
+      _waypoints.clear();
+      _startDate = null;
+      _endDate = null;
+      _selectedTransport = null;
+      _updateMarkers();
+    });
   }
 
   Widget _buildTextField(

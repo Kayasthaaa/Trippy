@@ -10,6 +10,7 @@ import 'package:trippy/src/feature/screen/home_screen/cubit/home_screen_cubit.da
 import 'package:trippy/src/feature/screen/home_screen/cubit/home_screen_state.dart';
 import 'package:trippy/src/feature/screen/home_screen/widgets/home_screen_card.dart';
 import 'package:trippy/src/feature/screen/home_screen/widgets/sliders.dart';
+import 'package:trippy/src/feature/screen/trip_details/page/trip_details_page.dart';
 import 'package:trippy/src/feature/widgets/app_bar.dart';
 import 'package:trippy/src/feature/widgets/app_loading.dart';
 import 'package:trippy/src/feature/widgets/app_texts.dart';
@@ -309,14 +310,19 @@ class _HomeState extends State<Home> {
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: state.userList!.data.trips.length,
+                    itemCount: state.userList!.data!.trips!.length,
                     itemBuilder: (context, index) {
-                      final user = state.userList!.data.trips[index];
+                      final user = state.userList!.data!.trips![index];
                       return Card_3D(
-                        imageUrl: user.tripName,
-                        title: user.tripName,
-                        desc: user.arrivalPlace,
-                        price: user.tripPrice,
+                        onTap: () {
+                          Get.to(TripDetailsPage(
+                            tripId: user.id!,
+                          ));
+                        },
+                        imageUrl: user.tripName!,
+                        title: user.tripName!,
+                        desc: user.tripDescription!,
+                        price: user.tripPrice!,
                       );
                     },
                   ),

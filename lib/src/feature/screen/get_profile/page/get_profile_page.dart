@@ -1,4 +1,4 @@
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
 
 import 'dart:io';
 
@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/route_manager.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trippy/src/constant/app_spaces.dart';
 import 'package:trippy/src/constant/colors.dart';
 import 'package:trippy/src/feature/screen/get_profile/cubit/get_profile_cubit.dart';
@@ -298,7 +299,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               borderRadius: BorderRadius.circular(6)),
                           width: maxWidth(context),
                           height: 50,
-                          onTap: () {
+                          onTap: () async {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.remove('user_token');
+                            await prefs.remove('user_id');
+
+                            final profileCubit =
+                                context.read<GetProfileCubit>();
+                            profileCubit.emit(GetProfileState.initial());
                             context.read<UserCubit>().logout();
                             Get.offAll(() => const LoginScreenPage());
                           },

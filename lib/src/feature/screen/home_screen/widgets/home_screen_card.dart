@@ -14,6 +14,7 @@ class Card_3D extends StatelessWidget {
   final String title;
   final String desc;
   final String price;
+  final void Function()? onTap;
 
   const Card_3D({
     required this.imageUrl,
@@ -21,13 +22,15 @@ class Card_3D extends StatelessWidget {
     required this.desc,
     super.key,
     required this.price,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
-      child: Container(
+      child: Containers(
+        onTap: onTap,
         width: double.infinity,
         height: 107,
         decoration: BoxDecoration(

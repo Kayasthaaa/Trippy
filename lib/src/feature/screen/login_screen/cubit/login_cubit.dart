@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trippy/src/feature/screen/login_screen/cubit/login_screen_state.dart';
+import 'package:trippy/src/feature/screen/login_screen/login_api/login_api.dart';
 import 'package:trippy/src/feature/screen/login_screen/login_repo/login_repo.dart';
 
 class UserCubit extends Cubit<UserState> {
@@ -22,7 +23,8 @@ class UserCubit extends Cubit<UserState> {
 
   Future<void> logout() async {
     await _clearUserCredentials();
-    emit(UserInitial()); // Emit initial state on logout
+    ApiService().resetDioHeaders(); // Clear Dio headers after logout
+    emit(UserInitial()); // Reset Cubit state
   }
 
   Future<void> _saveUserCredentials(String token, int userId) async {
@@ -33,6 +35,7 @@ class UserCubit extends Cubit<UserState> {
 
   Future<void> _clearUserCredentials() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
     await prefs.remove('user_token');
     await prefs.remove('user_id');
   }

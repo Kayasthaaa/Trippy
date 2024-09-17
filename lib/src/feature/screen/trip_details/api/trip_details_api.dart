@@ -2,12 +2,11 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trippy/src/constant/app_url.dart';
-import 'package:trippy/src/feature/screen/login_screen/models/error_models.dart';
 
-class ApiService {
+class TripDetailsApi {
   late Dio _dio;
 
-  ApiService() {
+  TripDetailsApi() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiUrl.baseUrl,
       connectTimeout: const Duration(seconds: 15),
@@ -18,7 +17,7 @@ class ApiService {
       onRequest: (options, handler) async {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('user_token');
-        // final user_id = prefs.getInt(key)
+
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -29,13 +28,12 @@ class ApiService {
       },
     ));
   }
-  void resetDioHeaders() {
-    _dio.options.headers.remove('Authorization'); // Clear token from headers
-  }
 
-  Future<Response> get(String path) async {
+  Future<Response> get(String path,
+      {Map<String, dynamic>? queryParameters}) async {
     try {
-      final response = await _dio.get(path);
+      final response = await _dio.get(path, queryParameters: queryParameters);
+      _checkStatusCode(response);
       return response;
     } catch (e) {
       throw _handleError(e);
@@ -46,25 +44,34 @@ class ApiService {
       {required Map<String, dynamic> data}) async {
     try {
       final response = await _dio.post(path, data: data);
+      _checkStatusCode(response);
       return response;
     } catch (e) {
       throw _handleError(e);
     }
   }
 
+  void _checkStatusCode(Response response) {
+    if (response.statusCode! < 200 || response.statusCode! >= 300) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        type: DioExceptionType.badResponse,
+        error: 'HTTP status error: ${response.statusCode}',
+      );
+    }
+  }
+
   Exception _handleError(dynamic error) {
     if (error is DioException) {
-      if (error.response != null) {
-        final errorModel = ErrorModel.fromJson(error.response!.data);
-        return Exception(errorModel.message);
-      }
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
           return Exception('Connection timed out');
         case DioExceptionType.badResponse:
-          return Exception('Server responded with an error');
+          return Exception(
+              'Server responded with error ${error.response?.statusCode}: ${error.response?.statusMessage}');
         case DioExceptionType.cancel:
           return Exception('Request cancelled');
         case DioExceptionType.unknown:
