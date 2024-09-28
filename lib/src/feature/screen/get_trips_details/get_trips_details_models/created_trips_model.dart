@@ -1,14 +1,15 @@
 // ignore_for_file: unnecessary_question_mark
 
-class TripDetailsModels {
+class CreatedTripDetailsModels {
   bool? success;
   int? status;
   String? message;
   Data? data;
 
-  TripDetailsModels({this.success, this.status, this.message, this.data});
+  CreatedTripDetailsModels(
+      {this.success, this.status, this.message, this.data});
 
-  TripDetailsModels.fromJson(Map<String, dynamic> json) {
+  CreatedTripDetailsModels.fromJson(Map<String, dynamic> json) {
     success = json['success'];
     status = json['status'];
     message = json['message'];
@@ -35,7 +36,7 @@ class Data {
 
   Data.fromJson(Map<String, dynamic> json) {
     trip = json['trip'] != null ? Trip.fromJson(json['trip']) : null;
-    isEnrolled = json['isEnrolled'];
+    isEnrolled = json['is_enrolled'];
   }
 
   Map<String, dynamic> toJson() {
@@ -43,7 +44,7 @@ class Data {
     if (trip != null) {
       data['trip'] = trip!.toJson();
     }
-    data['isEnrolled'] = isEnrolled;
+    data['is_enrolled'] = isEnrolled;
     return data;
   }
 }

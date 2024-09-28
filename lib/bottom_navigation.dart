@@ -1,9 +1,10 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:flutter/material.dart';
-import 'package:trippy/logout_btn.dart';
 import 'package:trippy/src/constant/colors.dart';
+import 'package:trippy/src/feature/screen/enrolled_trips/page/enrolled_trips.dart';
 import 'package:trippy/src/feature/screen/get_profile/page/get_profile_page.dart';
+import 'package:trippy/src/feature/screen/get_trips/page/get_trips_page.dart';
 import 'package:trippy/src/feature/screen/home_screen/page/home_scree.dart';
 
 class BottomNavigationScreen extends StatefulWidget {
@@ -18,7 +19,8 @@ class _BottomNavigationScreenState extends State<BottomNavigationScreen> {
 
   final List<Widget> _pages = [
     const Home(),
-    const LogoutBtn(),
+    const EnrolledTripsPage(),
+    const TripPage(),
     const ProfilePage(),
   ];
 
@@ -65,7 +67,18 @@ class _BottomNavigationScreenState extends State<BottomNavigationScreen> {
             ),
             BottomNavigationBarItem(
               icon: Icon(
-                Icons.explore_outlined,
+                Icons.bookmark,
+                size: 28,
+              ),
+              activeIcon: Icon(
+                Icons.bookmark,
+                size: 28,
+              ),
+              label: 'Enrolled Trips',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.explore,
                 size: 28,
               ),
               activeIcon: Icon(

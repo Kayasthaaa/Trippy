@@ -4,10 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trippy/src/constant/app_url.dart';
 import 'package:trippy/src/feature/screen/login_screen/models/error_models.dart';
 
-class ApiService {
+class EnrollApiService {
   late Dio _dio;
 
-  ApiService() {
+  EnrollApiService() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiUrl.baseUrl,
       connectTimeout: const Duration(seconds: 15),
@@ -18,7 +18,6 @@ class ApiService {
       onRequest: (options, handler) async {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('user_token');
-        //  final user_id = prefs.getInt(key)
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -29,8 +28,9 @@ class ApiService {
       },
     ));
   }
+
   void resetDioHeaders() {
-    _dio.options.headers.remove('Authorization'); // Clear token from headers
+    _dio.options.headers.remove('Authorization');
   }
 
   Future<Response> get(String path) async {

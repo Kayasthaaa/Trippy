@@ -1,9 +1,17 @@
 // ignore_for_file: library_private_types_in_public_api
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get_utils/get_utils.dart';
 import 'package:trippy/src/constant/colors.dart';
+import 'package:trippy/src/constant/loader.dart';
+import 'package:trippy/src/constant/toaster.dart';
+import 'package:trippy/src/feature/screen/post_enroll_trip/api/post_enroll_api.dart';
+import 'package:trippy/src/feature/screen/post_enroll_trip/cubit/post_enroll_cubit.dart';
+import 'package:trippy/src/feature/screen/post_enroll_trip/cubit/post_enroll_state.dart';
+import 'package:trippy/src/feature/screen/post_enroll_trip/repo/post_enroll_repo.dart';
 import 'package:trippy/src/feature/screen/trip_details/cubit/trip_details_cubit.dart';
 import 'package:trippy/src/feature/screen/trip_details/cubit/trip_details_state.dart';
 import 'package:trippy/src/feature/widgets/app_bar.dart';
@@ -22,67 +30,80 @@ class TripDetailsPage extends StatefulWidget {
   _TripDetailsPageState createState() => _TripDetailsPageState();
 }
 
-class _TripDetailsPageState extends State<TripDetailsPage>
-    with SingleTickerProviderStateMixin {
+class _TripDetailsPageState extends State<TripDetailsPage> {
+  late int _currentTripId;
+  bool _isEnrolling = false;
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
+    _currentTripId = widget.tripId;
+    _fetchTripDetails();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_currentTripId != widget.tripId) {
+      setState(() {
+        _currentTripId = widget.tripId;
+      });
+      _fetchTripDetails();
+    }
+  }
+
+  void _fetchTripDetails() {
     context
         .read<GetTripDetailsCubit>()
-        .fetchTripDetails(widget.tripId.toString());
+        .fetchTripDetails(_currentTripId.toString());
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColor.appColor,
-      appBar: const CustomAppBar(),
-      body: BlocBuilder<GetTripDetailsCubit, GetTripDetailsState>(
-        builder: (context, state) {
-          if (state.isLoading) {
-            return Center(
-              child: AppLoading()
-                  .animate()
-                  .fadeIn(duration: 600.ms), // Smooth fade-in animation
-            );
-          } else if (state.error != null) {
-            return Center(
-              child: Text(
-                'Error: ${state.error}',
-                style: GoogleFonts.lato(
-                  fontSize: 18,
-                  color: Colors.redAccent,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<GetTripDetailsCubit>.value(
+          value: context.read<GetTripDetailsCubit>(),
+        ),
+        BlocProvider<TripEnrollCubit>(
+          create: (context) =>
+              TripEnrollCubit(TripRepository(EnrollApiService())),
+        ),
+      ],
+      child: Scaffold(
+        backgroundColor: AppColor.appColor,
+        appBar: const CustomAppBar(),
+        body: BlocConsumer<GetTripDetailsCubit, GetTripDetailsState>(
+          listener: (context, state) {},
+          builder: (context, state) {
+            if (state.isLoading) {
+              return Center(
+                  child: AppLoading().animate().fadeIn(duration: 600.ms));
+            } else if (state.error != null) {
+              return Center(child: Text('Error: ${state.error}'));
+            } else if (state.trips != null) {
+              return SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 40),
+                      _buildTripImage(context),
+                      const SizedBox(height: 30),
+                      _buildTripDetails(context, state),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
                 ),
-              ).animate().fadeIn(duration: 500.ms),
-            );
-          } else if (state.trips != null) {
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 40),
-                    _buildTripImage(context)
-                        .animate()
-                        .fadeIn(duration: 600.ms)
-                        .slideY(begin: -0.3), // Smooth slide from top
-                    const SizedBox(height: 30),
-                    _buildTripDetails(context, state)
-                        .animate()
-                        .fadeIn(duration: 700.ms)
-                        .slideX(begin: -0.3),
-                    const SizedBox(height: 30) // Slide from the left
-                  ],
-                ),
-              ),
-            );
-          } else {
-            return const Center(
-              child: Text('No trip details available.'),
-            );
-          }
-        },
+              );
+            } else {
+              return const Center(child: Text('No trip details available.'));
+            }
+          },
+        ),
       ),
     );
   }
@@ -120,7 +141,6 @@ class _TripDetailsPageState extends State<TripDetailsPage>
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
       decoration: BoxDecoration(
-        // Neumorphism effect with subtle shadows
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -142,7 +162,7 @@ class _TripDetailsPageState extends State<TripDetailsPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            trip.trip.tripName.capitalizeFirst.toString(),
+            trip!.trip!.tripName!.capitalizeFirst.toString(),
             style: GoogleFonts.lato(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -151,7 +171,7 @@ class _TripDetailsPageState extends State<TripDetailsPage>
           ),
           const SizedBox(height: 10),
           Text(
-            trip.trip.tripDescription,
+            trip.trip!.tripDescription.toString(),
             style: GoogleFonts.lato(
               fontSize: 18,
               color: AppColor.ktextColor.withOpacity(0.7),
@@ -159,17 +179,17 @@ class _TripDetailsPageState extends State<TripDetailsPage>
           ),
           const SizedBox(height: 20),
           _buildTripInfoRow(
-              Icons.calendar_today, 'Start Date', trip.trip.startDate),
+              Icons.calendar_today, 'Start Date', trip.trip!.startDate),
           _buildTripInfoRow(
-              Icons.calendar_today_outlined, 'End Date', trip.trip.endDate),
+              Icons.calendar_today_outlined, 'End Date', trip.trip!.endDate),
+          _buildTripInfoRow(Icons.nature_people_outlined, 'People Enrolled',
+              trip.trip!.totalPeople),
+          _buildTripInfoRow(Icons.monetization_on, 'Price',
+              'Nrs ${trip.trip!.tripPrice} - /'),
           _buildTripInfoRow(
-              Icons.access_time, 'Arrival Time', trip.trip.arrivalTime),
-          _buildTripInfoRow(
-              Icons.monetization_on, 'Price', '\$${trip.trip.tripPrice}'),
-          _buildTripInfoRow(
-              Icons.directions_car, 'Transport', trip.trip.meansOfTransport),
+              Icons.directions_car, 'Transport', trip.trip!.meansOfTransport),
           const SizedBox(height: 30),
-          _buildActionButton().animate().fadeIn(duration: 400.ms).scale(),
+          _buildActionButton(),
         ],
       ),
     );
@@ -192,13 +212,100 @@ class _TripDetailsPageState extends State<TripDetailsPage>
   }
 
   Widget _buildActionButton() {
-    return const Center(
-      child: AppBtn(
-        child: Texts(
-          texts: 'Book Trip',
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
+    return BlocConsumer<TripEnrollCubit, TripEnrollState>(
+      listener: (context, state) {
+        if (state is TripEnrollSuccess) {
+          setState(() {
+            _isEnrolling = false;
+            _isLoading = false;
+          });
+          ToasterService.success(message: 'Successfully enrolled in the trip!');
+          _fetchTripDetails();
+        } else if (state is TripEnrollError) {
+          setState(() {
+            _isEnrolling = false;
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${state.error}')),
+          );
+        }
+      },
+      builder: (context, state) {
+        final GetTripDetailsState tripDetailsState =
+            context.watch<GetTripDetailsCubit>().state;
+        final bool isEnrolled =
+            tripDetailsState.trips?.data!.isEnrolled ?? false;
+
+        return AnimatedCrossFade(
+          duration: const Duration(milliseconds: 300),
+          firstChild: _buildBookTripButton(context),
+          secondChild: _buildEnrolledButton(state),
+          crossFadeState: isEnrolled ||
+                  _isEnrolling ||
+                  _isLoading ||
+                  state is TripEnrollLoading
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+        ).animate().fadeIn(duration: 400.ms).scale();
+      },
+    );
+  }
+
+  Widget _buildBookTripButton(BuildContext context) {
+    return AppBtn(
+      onTap: () {
+        setState(() {
+          _isLoading = true;
+        });
+        Timer(const Duration(seconds: 2), () {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _isEnrolling = true;
+            });
+            context.read<TripEnrollCubit>().enrollTrip(_currentTripId);
+          }
+        });
+      },
+      child: const Texts(
+        texts: 'Book Trip',
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  Widget _buildEnrolledButton(TripEnrollState state) {
+    return AppBtn(
+      onTap: null, // Disable the button when enrolled or enrolling
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (_isLoading || _isEnrolling || state is TripEnrollLoading)
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: loading(),
+            )
+          else
+            const Icon(
+              Icons.done,
+              color: Colors.white,
+              size: 27,
+            ),
+          const SizedBox(width: 6),
+          Texts(
+            texts: _isLoading
+                ? 'Processing...'
+                : _isEnrolling || state is TripEnrollLoading
+                    ? 'Enrolling...'
+                    : 'Enrolled',
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          )
+        ],
       ),
     );
   }

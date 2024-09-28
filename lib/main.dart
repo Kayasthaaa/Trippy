@@ -9,6 +9,12 @@ import 'package:trippy/src/controller/network_controller.dart';
 import 'package:trippy/src/feature/screen/get_profile/api/get_profile_api.dart';
 import 'package:trippy/src/feature/screen/get_profile/cubit/get_profile_cubit.dart';
 import 'package:trippy/src/feature/screen/get_profile/repo/get_profile_repo.dart';
+import 'package:trippy/src/feature/screen/get_trips/api/get_trips_api.dart';
+import 'package:trippy/src/feature/screen/get_trips/cubit/get_trips_cubit.dart';
+import 'package:trippy/src/feature/screen/get_trips/repo/get_trips_repo.dart';
+import 'package:trippy/src/feature/screen/get_trips_details/cubit/get_trip_details_cubit.dart';
+import 'package:trippy/src/feature/screen/get_trips_details/get_trips_details_api/get_trips_details_api.dart';
+import 'package:trippy/src/feature/screen/get_trips_details/repo/get_trips_details_repo.dart';
 import 'package:trippy/src/feature/screen/home_screen/api/home_screen_api.dart';
 import 'package:trippy/src/feature/screen/home_screen/cubit/home_screen_cubit.dart';
 import 'package:trippy/src/feature/screen/home_screen/repo/home_screen_repo.dart';
@@ -84,6 +90,20 @@ class AppBase extends StatelessWidget {
           create: (context) => GetTripDetailsCubit(
             GetTripDetailsRepository(
               TripDetailsApi(),
+            ),
+          ),
+        ),
+        BlocProvider<TripCubit>(
+          create: (context) => TripCubit(
+            GetTripRepository(
+              GetTripApiService(),
+            ),
+          ),
+        ),
+        BlocProvider(
+          create: (context) => GetCreatedTripDetailsCubit(
+            GetCreatedTripDetailsRepository(
+              GetCreatedTripDetailsApi(),
             ),
           ),
         ),

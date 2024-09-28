@@ -8,9 +8,8 @@ class GetTripDetailsCubit extends Cubit<GetTripDetailsState> {
   GetTripDetailsCubit(this._apiService) : super(GetTripDetailsState.initial());
 
   void fetchTripDetails(String tripId) {
-    if (state.trips != null) return;
-
-    emit(state.copyWith(isLoading: true, error: null));
+    // Emit loading state and clear previous trip data
+    emit(state.copyWith(isLoading: true, trips: null, error: null));
 
     _apiService
         .getTripDetails(tripId)

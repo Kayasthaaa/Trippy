@@ -92,9 +92,9 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
       price: double.tryParse(_budgetController.text) ?? 0,
       startDate: _startDate ?? DateTime.now(),
       endDate: _endDate ?? DateTime.now(),
-      arrivalTime: '8:00 PM', // You might want to add a field for this
+
       meansOfTransport: _selectedTransport ?? '',
-      isPrivate: false, // Add a toggle for this if needed
+      isPrivate: true, // Add a toggle for this if needed
       startLoc: _initialLocation != null
           ? "${_initialLocation!.latitude}, ${_initialLocation!.longitude}"
           : '',
@@ -113,6 +113,8 @@ class _TripPlannerPageState extends State<TripPlannerPage> {
         if (_destinationLocation != null)
           "${_destinationLocation!.latitude}, ${_destinationLocation!.longitude}",
       ],
+      totalPeople: '10',
+      type: 'Hike',
     );
   }
 

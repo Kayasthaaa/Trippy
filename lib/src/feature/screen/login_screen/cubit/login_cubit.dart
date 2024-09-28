@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trippy/src/feature/screen/login_screen/cubit/login_screen_state.dart';
 import 'package:trippy/src/feature/screen/login_screen/login_api/login_api.dart';
 import 'package:trippy/src/feature/screen/login_screen/login_repo/login_repo.dart';
+import 'package:trippy/src/feature/screen/post_enroll_trip/api/post_enroll_api.dart';
 
 class UserCubit extends Cubit<UserState> {
   final UserRepository _userRepository;
@@ -38,5 +39,7 @@ class UserCubit extends Cubit<UserState> {
     await prefs.clear();
     await prefs.remove('user_token');
     await prefs.remove('user_id');
+
+    EnrollApiService().resetDioHeaders();
   }
 }

@@ -1,7 +1,6 @@
 // ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
 
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +12,7 @@ import 'package:trippy/src/constant/app_spaces.dart';
 import 'package:trippy/src/constant/colors.dart';
 import 'package:trippy/src/feature/screen/get_profile/cubit/get_profile_cubit.dart';
 import 'package:trippy/src/feature/screen/get_profile/cubit/get_profile_state.dart';
+import 'package:trippy/src/feature/screen/get_trips/cubit/get_trips_cubit.dart';
 import 'package:trippy/src/feature/screen/login_screen/cubit/login_cubit.dart';
 import 'package:trippy/src/feature/screen/login_screen/page/login_form.dart';
 import 'package:trippy/src/feature/widgets/app_loading.dart';
@@ -307,7 +307,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             final profileCubit =
                                 context.read<GetProfileCubit>();
                             profileCubit.emit(GetProfileState.initial());
-                            context.read<UserCubit>().logout();
+                            await context.read<UserCubit>().logout();
+                            context.read<TripCubit>().resetState();
                             Get.offAll(() => const LoginScreenPage());
                           },
                           child: const Center(

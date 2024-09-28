@@ -1,16 +1,21 @@
-class HomeModel {
+class TripResponse {
   bool? success;
   int? status;
   String? message;
-  Data? data;
+  List<Data>? data;
 
-  HomeModel({this.success, this.status, this.message, this.data});
+  TripResponse({this.success, this.status, this.message, this.data});
 
-  HomeModel.fromJson(Map<String, dynamic> json) {
+  TripResponse.fromJson(Map<String, dynamic> json) {
     success = json['success'];
     status = json['status'];
     message = json['message'];
-    data = json['data'] != null ? Data.fromJson(json['data']) : null;
+    if (json['data'] != null) {
+      data = <Data>[];
+      json['data'].forEach((v) {
+        data!.add(Data.fromJson(v));
+      });
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -19,36 +24,13 @@ class HomeModel {
     data['status'] = status;
     data['message'] = message;
     if (this.data != null) {
-      data['data'] = this.data!.toJson();
+      data['data'] = this.data!.map((v) => v.toJson()).toList();
     }
     return data;
   }
 }
 
 class Data {
-  List<Trips>? trips;
-
-  Data({this.trips});
-
-  Data.fromJson(Map<String, dynamic> json) {
-    if (json['trips'] != null) {
-      trips = <Trips>[];
-      json['trips'].forEach((v) {
-        trips!.add(Trips.fromJson(v));
-      });
-    }
-  }
-
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = <String, dynamic>{};
-    if (trips != null) {
-      data['trips'] = trips!.map((v) => v.toJson()).toList();
-    }
-    return data;
-  }
-}
-
-class Trips {
   int? id;
   int? userId;
   String? tripType;
@@ -63,9 +45,8 @@ class Trips {
   bool? isPrivate;
   String? createdAt;
   String? updatedAt;
-  bool? isEnrolled;
 
-  Trips(
+  Data(
       {this.id,
       this.userId,
       this.tripType,
@@ -79,10 +60,9 @@ class Trips {
       this.meansOfTransport,
       this.isPrivate,
       this.createdAt,
-      this.updatedAt,
-      this.isEnrolled});
+      this.updatedAt});
 
-  Trips.fromJson(Map<String, dynamic> json) {
+  Data.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     userId = json['user_id'];
     tripType = json['trip_type'];
@@ -97,7 +77,6 @@ class Trips {
     isPrivate = json['is_private'];
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
-    isEnrolled = json['is_enrolled'];
   }
 
   Map<String, dynamic> toJson() {
@@ -116,7 +95,6 @@ class Trips {
     data['is_private'] = isPrivate;
     data['created_at'] = createdAt;
     data['updated_at'] = updatedAt;
-    data['is_enrolled'] = isEnrolled;
     return data;
   }
 }
